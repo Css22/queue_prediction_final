@@ -1,6 +1,6 @@
 from preprocess.preprocess import Preprocessor
 
-class PreprocessorTaiyi(Preprocessor):
+class PreprocessorTheta(Preprocessor):
     # TODO
     def preprocess(self, file_path):
         raise NotImplementedError()
