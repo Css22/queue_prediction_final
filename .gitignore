@@ -1,9 +1,6 @@
 .idea/
-data/
-!data/share/
+data/local/
 tmp*
-
-
 
 
 
