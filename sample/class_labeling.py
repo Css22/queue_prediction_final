@@ -16,7 +16,7 @@ class Labeler:
             :param sample_list: Sample数组
             :return: 打好标签的Sample数组
             """
-        k = 3;
+        k = 4;
         processingList = list()
         # 读取sample的各个特征,并将这些特征放入processingList中处理
         for sample in sample_list:
@@ -28,13 +28,22 @@ class Labeler:
             processingList.append(array)
         processingNp = np.array(processingList)
 
-        print(processingNp)
         kmeans = KMeans(n_clusters=k)
         kmeans.fit(processingNp)
         self.center = kmeans.cluster_centers_;
-        print((self.center))
         y_kmeans = kmeans.predict(processingNp)
-        print(y_kmeans)
+
+        num_list = []
+        for i in range(0,k):
+            num_list.append(0)
+
+        for i in y_kmeans:
+            num_list[i] = num_list[i] +1
+
+        for i in range(0,k):
+            print('cluster', end=' ')
+            print(i,': ',num_list[i])
+
         for i in range(0, len(sample_list)):
             sample_list[i].class_label = y_kmeans[i]
             # print(sample_list[i].class_label)
