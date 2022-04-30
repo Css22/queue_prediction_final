@@ -19,10 +19,11 @@ if __name__ == '__main__':
     # generate sample
     sample_list = to_sample_list(raw_list)
     # sample_save(sample_list, 'data/sample_saved.txt')
-    #
+
+
     # # labeling
-    # labeler = Labeler()
-    # sample_list = labeler.label_samples(sample_list)
+    labeler = Labeler()
+    sample_list = labeler.label_samples(sample_list)
     # labeler.save('data/labeler_config.txt')
     #
     # # run model

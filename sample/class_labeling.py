@@ -21,10 +21,10 @@ class Labeler:
             # 读取sample的各个特征,并将这些特征放入processingList中处理
             for sample in sample_list:
                 array = list()
-                array.append(sample.requested_hour)
-                array.append(sample.requested_node)
+                array.append(sample.cpu_hours)
+                array.append(sample.cpus)
                 array.append(sample.queue_load)
-                array.append(sample.node_load)
+                array.append(sample.system_load)
                 processingList.append(array)
             processingNp = np.array(processingList)
 
@@ -42,7 +42,7 @@ class Labeler:
             for i in range(1, k + 1):
                 km = KMeans(
                     n_clusters=i, init='random',
-                    n_init=10, max_iter=300,
+                    n_init=10, max_iter=3000,
                     tol=1e-04, random_state=0
                 )
                 km.fit(processingNp)
