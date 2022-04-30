@@ -9,14 +9,8 @@ class Labeler:
         pass
 
     # TODO
-    def label_samples(self, sample_list):
-        """
-        给samples聚类，给Sample.class_label打标签
-        :param sample_list: Sample数组
-        :return: 打好标签的Sample数组
-        """
 
-        def label_samples(self, sample_list):
+    def label_samples(self, sample_list):
             """
             给samples聚类，给Sample.class_label打标签
             :param sample_list: Sample数组
