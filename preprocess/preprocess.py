@@ -1,3 +1,5 @@
+import pickle
+
 class RawSample:
     def __init__(self, request_ts=-1, start_ts=-1, end_ts=-1, node_num=-1, requested_hour=-1,queue_name = -1,actual_hour=-1):
         self.request_ts = request_ts
@@ -22,16 +24,42 @@ class Preprocessor:
         :param raw_sample_list: 待保存的RawSample数组
         :param file_path: 保存的位置
         """
-        pass
+        save_list = []
+        for i in raw_sample_list:
+            tmp_list = []
+            tmp_list.append(i.request_ts)
+            tmp_list.append(i.start_ts)
+            tmp_list.append(i.end_ts)
+            tmp_list.append(i.node_num)
+            tmp_list.append(i.requested_hour)
+            tmp_list.append(i.queue_name)
+            tmp_list.append(i.actual_hour)
+            save_list.append(tmp_list)
+        with open(file_path,'wb') as text:
+            pickle.dump(save_list,text)
 
     # TODO
     def load(self, file_path):
         """
         从保存的位置读取预处理过的数据。
         :param file_path: 保存的位置
-        :return: 生成的RawSample数组
-        """
-        pass
+        :return: 生成的RawSample数组"""
+        with open(file_path,'rb') as text:
+            tmp_list = pickle.load(text)
+        raw_list = []
+        for i in tmp_list:
+            tmp_rawsample = RawSample()
+            tmp_rawsample.request_ts = i[0]
+            tmp_rawsample.start_ts = i[1]
+            tmp_rawsample.end_ts = i[2]
+            tmp_rawsample.node_num = i[3]
+            tmp_rawsample.requested_hour = i[4]
+            tmp_rawsample.queue_name = i[5]
+            tmp_rawsample.actual_hour = i[6]
+            raw_list.append(tmp_rawsample)
+
+        return raw_list
+
 
     def preprocess(self, file_path):
         """

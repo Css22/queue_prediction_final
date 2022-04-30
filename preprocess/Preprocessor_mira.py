@@ -6,7 +6,7 @@ class PreprocessorMira(Preprocessor):
 
     def preprocess(self, file_path):
         dataset = pd.read_csv(file_path)
-        dataset = dataset.sort_values(by='QUEUED_TIMESTAMP' , ascending=True)
+
         preprocessed_list = []
         for i in range(0,len(dataset['QUEUED_TIMESTAMP'])):
             tmp_raw = RawSample(time_utils.to_timestamp(dataset['QUEUED_TIMESTAMP'][i]),

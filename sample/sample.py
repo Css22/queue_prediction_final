@@ -1,4 +1,5 @@
 import heapq
+import pickle
 class Sample:
     def __init__(self, cpu_hours = -1, cpus=-1, queue_load= -1, system_load=-1, actual_hour=-1, class_label=-1):
         self.cpu_hours = cpu_hours
@@ -16,7 +17,18 @@ def sample_save(sample_list, file_path):
     :param raw_sample_list: 待保存的Sample数组
     :param file_path: 保存的位置
     """
-    raise NotImplementedError()
+    save_list = []
+    for i in sample_list:
+        tmp_list = []
+        tmp_list.append(i.cpu_hours)
+        tmp_list.append(i.cpus)
+        tmp_list.append(i.queue_load)
+        tmp_list.append(i.system_load)
+        tmp_list.append(i.actual_hour)
+        tmp_list.append(i.class_label)
+        save_list.append(tmp_list)
+    with open(file_path, 'wb') as text:
+        pickle.dump(save_list, text)
 
 
 # TODO
@@ -26,7 +38,20 @@ def sample_load(file_path):
     :param file_path: 保存的位置
     :return: Sample数组
     """
-    raise NotImplementedError()
+    with open(file_path, 'rb') as text:
+        tmp_list = pickle.load(text)
+    sample_list = []
+    for i in tmp_list:
+        tmp_sample = Sample()
+        tmp_sample.cpu_hours = i[0]
+        tmp_sample.cpus = i[1]
+        tmp_sample.queue_load = i[2]
+        tmp_sample.system_load = i[3]
+        tmp_sample.actual_hour = i[4]
+        tmp_sample.class_label = i[5]
+        sample_list.append(tmp_sample)
+
+    return sample_list
 
 # TODO
 def to_sample_list(preprocessed_list):
@@ -51,8 +76,11 @@ def to_sample_list(preprocessed_list):
                     heapq.heappop(request_ts_list)
                 else:
                     for job in request_ts_list:
-                        system_load = system_load + job.node_num
-                        if job.queue_name == i.queue_name:
+                        if job.request_ts == i.request_ts:
+                            continue
+                        if job.start_ts < i.request_ts:
+                            system_load = system_load + job.node_num
+                        if job.queue_name == i.queue_name and job.start_ts > i.request_ts:
                             queue_load = queue_load + job.node_num
                     break
             tem = Sample(i.node_num * i.requested_hour, i.node_num, queue_load,system_load , i.actual_hour)
