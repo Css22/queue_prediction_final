@@ -2,6 +2,7 @@ from sklearn.cluster import KMeans
 import matplotlib.pyplot as plt
 
 import numpy as np
+from sklearn.preprocessing import StandardScaler
 
 
 class Labeler:
@@ -26,6 +27,8 @@ class Labeler:
             array.append(sample.queue_load)
             array.append(sample.system_load)
             processingList.append(array)
+        preprocess = StandardScaler()
+        processingList = preprocess.fit_transform(processingList)
         processingNp = np.array(processingList)
 
         kmeans = KMeans(n_clusters=k)
