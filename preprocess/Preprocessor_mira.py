@@ -9,6 +9,8 @@ class PreprocessorMira(Preprocessor):
 
         preprocessed_list = []
         for i in range(0,len(dataset['QUEUED_TIMESTAMP'])):
+            if i < 1000:
+                continue
             tmp_raw = RawSample(time_utils.to_timestamp(dataset['QUEUED_TIMESTAMP'][i]),
                                 time_utils.to_timestamp(dataset['START_TIMESTAMP'][i]),
                                 time_utils.to_timestamp(dataset['END_TIMESTAMP'][i]),

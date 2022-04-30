@@ -2,7 +2,7 @@ from sklearn.cluster import KMeans
 import matplotlib.pyplot as plt
 
 import numpy as np
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import StandardScaler,MinMaxScaler,RobustScaler
 
 
 class Labeler:
@@ -17,8 +17,8 @@ class Labeler:
             :param sample_list: Sample数组
             :return: 打好标签的Sample数组
             """
-        k = 4;
-        processingList = list()
+        k = 6;
+        processing_list = list()
         # 读取sample的各个特征,并将这些特征放入processingList中处理
         for sample in sample_list:
             array = list()
@@ -26,15 +26,27 @@ class Labeler:
             array.append(sample.cpus)
             array.append(sample.queue_load)
             array.append(sample.system_load)
-            processingList.append(array)
-        preprocess = StandardScaler()
-        processingList = preprocess.fit_transform(processingList)
-        processingNp = np.array(processingList)
+            processing_list.append(array)
+
+        # preprocess = MinMaxScaler(feature_range=(0,1))
+        # processing_list = preprocess.fit_transform(processing_list)
+        # processingNp = np.array(processing_list)
+
+        preprocess = MinMaxScaler(feature_range=(0,1))
+        preprocess.fit(processing_list)
+        processing_list = preprocess.transform(processing_list)
+        processing_np = np.array(processing_list)
+
+        # preprocess = RobustScaler(quantile_range=(25.0,75.0))
+        # preprocess.fit(processing_list)
+        # processing_list = preprocess.transform(processing_list)
+        # processing_np = np.array(processing_list)
+
 
         kmeans = KMeans(n_clusters=k)
-        kmeans.fit(processingNp)
+        kmeans.fit(processing_np)
         self.center = kmeans.cluster_centers_;
-        y_kmeans = kmeans.predict(processingNp)
+        y_kmeans = kmeans.predict(processing_np)
 
         num_list = []
         for i in range(0,k):
@@ -54,10 +66,10 @@ class Labeler:
         for i in range(1, k + 1):
             km = KMeans(
                 n_clusters=i, init='random',
-                n_init=10, max_iter=3000,
+                n_init=10, max_iter=300,
                 tol=1e-04, random_state=0
             )
-            km.fit(processingNp)
+            km.fit(processing_np)
 
             # inertia: Sum of squared distances of samples to their closest cluster center,
             # weighted by the sample weights if provided.

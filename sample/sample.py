@@ -80,8 +80,8 @@ def to_sample_list(preprocessed_list):
                             continue
                         if job.start_ts < i.request_ts:
                             system_load = system_load + job.node_num
-                        if job.queue_name == i.queue_name and job.start_ts > i.request_ts:
-                            queue_load = queue_load + job.node_num
+                        if job.start_ts >= i.request_ts:
+                            queue_load = queue_load + 1
                     break
             tem = Sample(i.node_num * i.requested_hour, i.node_num, queue_load,system_load , i.actual_hour)
             sample_list.append(tem)
