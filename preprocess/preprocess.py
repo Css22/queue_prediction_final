@@ -2,7 +2,7 @@ import pickle
 
 
 class RawSample:
-    def __init__(self, request_ts=-1, start_ts=-1, end_ts=-1, node_num=-1, requested_sec=-1, queue_name=-1):
+    def __init__(self, request_ts=-1, start_ts=-1, end_ts=-1, node_num=-1, requested_sec=-1, queue_name=None):
         self.request_ts = request_ts
         self.start_ts = start_ts
         self.end_ts = end_ts
@@ -17,6 +17,8 @@ class RawSample:
         else:
             return False
 
+    def __str__(self):
+        return self.__dict__.__str__()
 
 class Preprocessor:
     # TODO
