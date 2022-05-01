@@ -1,10 +1,14 @@
 class RawSample:
-    def __init__(self, request_ts=-1, start_ts=-1, end_ts=-1, node_num=-1, requested_hour=-1):
+    def __init__(self, request_ts=-1, start_ts=-1, end_ts=-1, node_num=-1, requested_sec=-1, queue_name=None):
         self.request_ts = request_ts
         self.start_ts = start_ts
         self.end_ts = end_ts
         self.node_num = node_num
-        self.requested_hour = requested_hour
+        self.requested_sec = requested_sec
+        self.queue_name = queue_name
+
+    def __str__(self):
+        return self.__dict__.__str__()
 
 class Preprocessor:
     # TODO
