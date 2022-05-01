@@ -8,26 +8,25 @@ from sample.class_labeling import Labeler
 
 if __name__ == '__main__':
     # preprocess
-    preprocessor = PreprocessorMira()
-    raw_list = preprocessor.preprocess('data/local/mira/sorted.csv')
-    preprocessor.save(raw_list,'data/local/mira/RawSample_saved.txt')
-    # raw_list = preprocessor.load('data/local/theta/RawSample_saved.txt')
+    # preprocessor = PreprocessorMira()
+    # raw_list = preprocessor.preprocess('data/local/mira/sorted.csv')
+    # preprocessor.save(raw_list,'data/local/mira/RawSample_saved.txt')
+    # raw_list = preprocessor.load('data/local/mira/RawSample_saved.txt')
 
 
     # generate sample
-    sample_list = to_sample_list(raw_list)
-    sample_save(sample_list, 'data/local/mira/sample_saved.txt')
-    # sample_list = sample_load('data/local/theta/sample_saved.txt')
+    # sample_list = to_sample_list(raw_list)
+    # sample_save(sample_list, 'data/local/mira/sample_saved.txt')
+    sample_list = sample_load('data/local/mira/sample_saved.txt')
 
     # labeling
-    labeler = Labeler()
+    labeler = Labeler(k=8)
     sample_list = labeler.label_samples(sample_list)
     # labeler.save('data/labeler_config.txt')
 
-
     # # run model
-    # model = RegressionModel(sample_list, labeler)
-    # model.train()
+    model = RegressionModel(sample_list, labeler, 4, 1)
+    model.train()
     # model.save('linear_model.pkt')
 
     # # use model

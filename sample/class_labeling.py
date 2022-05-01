@@ -1,14 +1,15 @@
 from sklearn.cluster import KMeans
 import matplotlib.pyplot as plt
+import random
 
 import numpy as np
 from sklearn.preprocessing import StandardScaler,MinMaxScaler,RobustScaler
 
 
 class Labeler:
-    def __init__(self, center=np.array([])):
+    def __init__(self, k, center=np.array([])):
         self.center = center
-
+        self.k = k
     # TODO
 
     def label_samples(self, sample_list):
@@ -17,7 +18,7 @@ class Labeler:
             :param sample_list: Sample数组
             :return: 打好标签的Sample数组
             """
-        k = 6;
+        random.shuffle(sample_list)
         processing_list = list()
         # 读取sample的各个特征,并将这些特征放入processingList中处理
         for sample in sample_list:
@@ -27,6 +28,8 @@ class Labeler:
             array.append(sample.queue_load)
             array.append(sample.system_load)
             processing_list.append(array)
+
+
 
         # preprocess = MinMaxScaler(feature_range=(0,1))
         # processing_list = preprocess.fit_transform(processing_list)
@@ -43,19 +46,19 @@ class Labeler:
         # processing_np = np.array(processing_list)
 
 
-        kmeans = KMeans(n_clusters=k)
+        kmeans = KMeans(n_clusters=self.k)
         kmeans.fit(processing_np)
         self.center = kmeans.cluster_centers_;
         y_kmeans = kmeans.predict(processing_np)
 
         num_list = []
-        for i in range(0,k):
+        for i in range(0,self.k):
             num_list.append(0)
 
         for i in y_kmeans:
             num_list[i] = num_list[i] +1
 
-        for i in range(0,k):
+        for i in range(0,self.k):
             print('cluster', end=' ')
             print(i,': ',num_list[i])
 
@@ -63,7 +66,7 @@ class Labeler:
             sample_list[i].class_label = y_kmeans[i]
             # print(sample_list[i].class_label)
         distortions = []
-        for i in range(1, k + 1):
+        for i in range(1, self.k + 1):
             km = KMeans(
                 n_clusters=i, init='random',
                 n_init=10, max_iter=300,
@@ -76,11 +79,11 @@ class Labeler:
             distortions.append(km.inertia_)
 
         # plot
-        plt.plot(range(1, k + 1), distortions, marker='o')
+        plt.plot(range(1, self.k + 1), distortions, marker='o')
         plt.xlabel('Number of clusters')
         plt.ylabel('Distortion')
         plt.show()
-
+        return sample_list
     # TODO
     def label(self, sample):
         """
