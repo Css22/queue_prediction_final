@@ -3,13 +3,14 @@ import matplotlib.pyplot as plt
 import random
 
 import numpy as np
-from sklearn.preprocessing import StandardScaler,MinMaxScaler,RobustScaler
+from sklearn.preprocessing import StandardScaler, MinMaxScaler, RobustScaler
 
 
 class Labeler:
     def __init__(self, k, center=np.array([])):
         self.center = center
         self.k = k
+
     # TODO
 
     def label_samples(self, sample_list):
@@ -29,13 +30,7 @@ class Labeler:
             array.append(sample.system_load)
             processing_list.append(array)
 
-
-
-        # preprocess = MinMaxScaler(feature_range=(0,1))
-        # processing_list = preprocess.fit_transform(processing_list)
-        # processingNp = np.array(processing_list)
-
-        preprocess = MinMaxScaler(feature_range=(0,1))
+        preprocess = MinMaxScaler(feature_range=(0, 1))
         preprocess.fit(processing_list)
         processing_list = preprocess.transform(processing_list)
         processing_np = np.array(processing_list)
@@ -45,22 +40,21 @@ class Labeler:
         # processing_list = preprocess.transform(processing_list)
         # processing_np = np.array(processing_list)
 
-
         kmeans = KMeans(n_clusters=self.k)
         kmeans.fit(processing_np)
         self.center = kmeans.cluster_centers_;
         y_kmeans = kmeans.predict(processing_np)
 
         num_list = []
-        for i in range(0,self.k):
+        for i in range(0, self.k):
             num_list.append(0)
 
         for i in y_kmeans:
-            num_list[i] = num_list[i] +1
+            num_list[i] = num_list[i] + 1
 
-        for i in range(0,self.k):
+        for i in range(0, self.k):
             print('cluster', end=' ')
-            print(i,': ',num_list[i])
+            print(i, ': ', num_list[i])
 
         for i in range(0, len(sample_list)):
             sample_list[i].class_label = y_kmeans[i]
@@ -84,6 +78,7 @@ class Labeler:
         plt.ylabel('Distortion')
         plt.show()
         return sample_list
+
     # TODO
     def label(self, sample):
         """
@@ -105,7 +100,7 @@ class Labeler:
                 sample.class_label = i
                 maxNumber = temp
 
-    # TODO
+    # TODOz
     def load(self, file_path):
         """
         导入labeler

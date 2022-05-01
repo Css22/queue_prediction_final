@@ -1,18 +1,20 @@
 import numpy as np
+import math
 import torch
-
-from model.model import Model
 import torch.nn as nn
 import torch.nn.functional as F
-import torch.utils.data as Data
-from torch.nn import  init
+import torch.utils.data as data
+from torch.nn import init
 
-class LinearNet(nn.Module) :
+from model.model import Model
+
+
+class LinearNet(nn.Module):
     def __init__(self, n_feature, n_output):
         super(LinearNet, self).__init__()
-        self.linear1 = nn.Linear(n_feature, 20)
-        self.linear2 = nn.Linear(20, 20)
-        self.output = nn.Linear(20, n_output)
+        self.linear1 = nn.Linear(n_feature, 5)
+        self.linear2 = nn.Linear(5, 10)
+        self.output = nn.Linear(10, n_output)
 
     def forward(self, x):
         y = F.relu(self.linear1(x))
@@ -20,51 +22,50 @@ class LinearNet(nn.Module) :
         y = self.output(y)
         return y
 
+
 class RegressionModel(Model):
-    def __init__(self, sample_list, labeler, n_feature, n_output, model_list = list()):
+    def __init__(self, sample_list, labeler, n_feature, n_output):
         super().__init__(sample_list, labeler)
         self.n_feature = n_feature
         self.n_output = n_output
-
-        if len(model_list) == 0:
-            self.model_list = [None] * labeler.k
-        else:
-            self.model_list = model_list
+        self.model_list = []
+        self.train_dataset = [[]] * labeler.k
+        self.test_dataset = [[]] * labeler.k
+        self.create_dataset()
 
     """
        我们以数据集 训练，测试比例 8:2的比例进行来来行训练与测试，
        同时将训练好的模型按照聚类的类别保存到对应下标的model_list中
        """
+
     def train(self):
         train_list = [list()] * self.labeler.k
         label_list = [list()] * self.labeler.k
 
-        for i in self.train_dataset:
-            tem_train_list = list()
-            tem_train_list.append(i.cpu_hours)
-            tem_train_list.append(i.cpus)
-            tem_train_list.append(i.queue_load)
-            tem_train_list.append(i.system_load)
+        for i in range(0, self.labeler.k):
+            for j in self.train_dataset[i]:
+                tem_train_list = list()
+                tem_train_list.append(math.log2(j.cpu_hours + 1))
+                tem_train_list.append(j.cpus)
+                # tem_train_list.append(j.queue_load)
+                # tem_train_list.append(j.system_load)
 
-            train_list[i.class_label].append(tem_train_list)
-            label_list[i.class_label].append(i.actual_hour)
+                train_list[j.class_label].append(tem_train_list)
+                label_list[j.class_label].append(math.log2(j.actual_sec + 1))
+        for i in range(0, self.labeler.k):
 
-
-        for i in range(0,self.labeler.k):
-
-            n_epoch = 20
+            n_epoch = 10
             batch_size = 32
 
             features = torch.from_numpy(np.array(train_list[i]))
             labels = torch.from_numpy(np.array(label_list[i]))
             labels = torch.tensor(labels, dtype=torch.double)
 
-            dataset = Data.TensorDataset(features, labels)
-            data_iter = Data.DataLoader(dataset, batch_size, shuffle=True)
+            dataset = data.TensorDataset(features, labels)
+            data_iter = data.DataLoader(dataset, batch_size, shuffle=True)
 
-            net = LinearNet(self.n_feature,self.n_output).to(device='cuda')
+            net = LinearNet(self.n_feature, self.n_output).to(device='cuda')
             net = net.double()
-
 
             init.normal_(net.linear1.weight, mean=0, std=0.01)
             init.constant_(net.linear1.bias, val=0)
@@ -73,25 +74,35 @@ class RegressionModel(Model):
             init.normal_(net.output.weight, mean=0, std=0.01)
             init.constant_(net.output.bias, val=0)
 
-            loss = nn.MSELoss()
-            optimizer = torch.optim.SGD(net.parameters(), lr=1e-2)
-            loss = loss.cuda()
+            loss_fn = nn.MSELoss()
+            optimizer = torch.optim.SGD(net.parameters(), lr=1e-4)
+            loss_fn = loss_fn.cuda()
 
             for epoch in range(1, n_epoch + 1):
-                for X, y in data_iter:
-                    X, y = X.cuda(), y.cuda()
-                    output = net(X)
-                    l = loss(output, y.squeeze())
+                for x, y in data_iter:
+                    x, y = x.cuda(), y.cuda()
+                    output = net(x)
+                    loss = loss_fn(output, y)
                     optimizer.zero_grad()  # 梯度清零，等价于net.zero_grad()
-                    l.backward()
+                    loss.backward()
                     optimizer.step()
-                print('epoch %d, loss: %f' % (epoch, l.item()), end=' ------')
+                print('epoch %d, loss: %f' % (epoch, loss.item()), end=' ------')
                 print()
-
+            net = net.to(device='cpu')
+            self.model_list.append(net)
+            print()
 
     # TODO
     def predict(self, sample):
-        pass
+        with torch.no_grad():
+            # pred = self.model_list[sample.class_label](
+            #     torch.tensor(torch.Tensor([math.log2(sample.cpu_hours + 1), sample.cpus, sample.queue_load, sample.system_load]),dtype=float))
+            pred = self.model_list[sample.class_label](
+                torch.tensor(
+                    torch.Tensor([math.log2(sample.cpu_hours + 1), sample.cpus]),
+                    dtype=float))
+            value = pred.tolist()[0]
+            return (2 ** value) - 1
 
     # TODO
     def save(self, file_path):
@@ -100,3 +111,54 @@ class RegressionModel(Model):
     # TODO
     def load(self, file_path):
         pass
+
+    def create_dataset(self):
+        """
+        对于输入的sample_list进行训练集与测试集的划分。
+        我们是采取训练训练集：测试集 = 8：2的比例进行划分。
+        注意，这里进入的sample_list已经进行过打乱。
+        """
+        count = [0] * self.labeler.k
+        for i in range(0, len(self.sample_list)):
+            count[self.sample_list[i].class_label] = count[self.sample_list[i].class_label] + 1
+
+        for i in range(0, len(self.sample_list)):
+
+            index = count[self.sample_list[i].class_label] / 10 * 8
+
+            if len(self.train_dataset[self.sample_list[i].class_label]) <= index:
+                self.train_dataset[self.sample_list[i].class_label].append(self.sample_list[i])
+
+            else:
+                self.test_dataset[self.sample_list[i].class_label].append(self.sample_list[i])
+
+    def test(self):
+        test = []
+        sums = [0 for _ in range(5)]
+        nums = [0 for _ in range(5)]
+
+        for i in range(0,len(self.test_dataset)):
+            for j in range(0,len(self.test_dataset[i])):
+                test.append(self.test_dataset[i][j])
+        for i in test:
+            predict_time = self.predict(i)
+            actual_time = i.actual_sec
+
+            if actual_time <= 3600:  # 0-1
+                sums[0] += abs(predict_time - actual_time)
+                nums[0] += 1
+            elif actual_time <= 3600 * 3:  # 1-3
+                sums[1] += abs(predict_time - actual_time)
+                nums[1] += 1
+            elif actual_time <= 3600 * 6:  # 3-6
+                sums[2] += abs(predict_time - actual_time)
+                nums[2] += 1
+            elif actual_time <= 3600 * 12:  # 6-12
+                sums[3] += abs(predict_time - actual_time)
+                nums[3] += 1
+            elif actual_time <= 3600 * 24:  # 12-24
+                sums[4] += abs(predict_time - actual_time)
+                nums[4] += 1
+
+        avgs = [round(sums[i] / nums[i]/3600, 2) for i in range(5)]
+        print(avgs)

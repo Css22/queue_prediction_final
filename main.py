@@ -20,13 +20,14 @@ if __name__ == '__main__':
     sample_list = sample_load('data/local/mira/sample_saved.txt')
 
     # labeling
-    labeler = Labeler(k=8)
+    labeler = Labeler(k=1)
     sample_list = labeler.label_samples(sample_list)
     # labeler.save('data/labeler_config.txt')
 
     # # run model
     model = RegressionModel(sample_list, labeler, 4, 1)
     model.train()
+    model.test()
     # model.save('linear_model.pkt')
 
     # # use model

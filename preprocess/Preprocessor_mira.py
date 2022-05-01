@@ -16,7 +16,6 @@ class PreprocessorMira(Preprocessor):
                                 time_utils.to_timestamp(dataset['END_TIMESTAMP'][i]),
                                 dataset['NODES_REQUESTED'][i],
                                 dataset['WALLTIME_SECONDS'][i],
-                                dataset['QUEUE_NAME'][i],
-                                dataset['ELIGIBLE_WAIT_SECONDS'][i])
+                                dataset['QUEUE_NAME'][i])
             preprocessed_list.append(tmp_raw)
         return preprocessed_list

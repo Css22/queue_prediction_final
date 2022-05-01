@@ -1,12 +1,12 @@
 import heapq
 import pickle
 class Sample:
-    def __init__(self, cpu_hours = -1, cpus=-1, queue_load= -1, system_load=-1, actual_hour=-1, class_label=-1):
+    def __init__(self, cpu_hours = -1, cpus=-1, queue_load= -1, system_load=-1, actual_sec=-1, class_label=-1):
         self.cpu_hours = cpu_hours
         self.cpus = cpus
         self.queue_load = queue_load
         self.system_load = system_load
-        self.actual_hour = actual_hour
+        self.actual_sec = actual_sec
         self.class_label = class_label
 
 
@@ -24,7 +24,7 @@ def sample_save(sample_list, file_path):
         tmp_list.append(i.cpus)
         tmp_list.append(i.queue_load)
         tmp_list.append(i.system_load)
-        tmp_list.append(i.actual_hour)
+        tmp_list.append(i.actual_sec)
         tmp_list.append(i.class_label)
         save_list.append(tmp_list)
     with open(file_path, 'wb') as text:
@@ -47,7 +47,7 @@ def sample_load(file_path):
         tmp_sample.cpus = i[1]
         tmp_sample.queue_load = i[2]
         tmp_sample.system_load = i[3]
-        tmp_sample.actual_hour = i[4]
+        tmp_sample.actual_sec = i[4]
         tmp_sample.class_label = i[5]
         sample_list.append(tmp_sample)
 
@@ -65,7 +65,7 @@ def to_sample_list(preprocessed_list):
 
     for i in preprocessed_list:
         if len(request_ts_list) == 0 :
-            tem = Sample(i.node_num * i.requested_hour,i.node_num,0,0,i.actual_hour)
+            tem = Sample(i.node_num * i.requested_sec, i.node_num, 0, 0, i.actual_sec)
             sample_list.append(tem)
         else:
             system_load = 0
@@ -83,7 +83,7 @@ def to_sample_list(preprocessed_list):
                         if job.start_ts >= i.request_ts:
                             queue_load = queue_load + 1
                     break
-            tem = Sample(i.node_num * i.requested_hour, i.node_num, queue_load,system_load , i.actual_hour)
+            tem = Sample(i.node_num * i.requested_sec, i.node_num, queue_load, system_load, i.actual_sec)
             sample_list.append(tem)
         heapq.heappush(request_ts_list,i)
     return sample_list
