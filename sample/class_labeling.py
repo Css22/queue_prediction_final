@@ -79,13 +79,15 @@ class Labeler:
         plt.show()
         return sample_list
 
-    # TODO
+        # TODO
+
     def label(self, sample):
         """
         给Sample.class_label打标签
         :param sample: Sample
         :return: int, 标签
         """
+
         array = list()
         array.append(sample.cpu_hours)
         array.append(sample.cpus)
@@ -93,12 +95,49 @@ class Labeler:
         array.append(sample.system_load)
         vector = np.array(array)
 
+        maxVector = self.MinMaxScaler.data_max_
+        minVector = self.MinMaxScaler.data_min_
+        print(vector)
+        X_std = (vector - minVector) / (maxVector - minVector)
+        print(X_std)
+
         maxNumber = float("inf")
         for i in range(0, len(self.center)):
-            temp = np.linalg.norm(self.center[i] - vector)
+            temp = np.linalg.norm(self.center[i] - X_std)
             if temp <= maxNumber:
                 sample.class_label = i
                 maxNumber = temp
+        self.sampleList.append(sample)
+        return sample.class_label
+        # TODO
+
+    def label(self, sample):
+        """
+        给Sample.class_label打标签
+        :param sample: Sample
+        :return: int, 标签
+        """
+
+        array = list()
+        array.append(sample.cpu_hours)
+        array.append(sample.cpus)
+        array.append(sample.queue_load)
+        array.append(sample.system_load)
+        vector = np.array(array)
+
+        maxVector = self.MinMaxScaler.data_max_
+        minVector = self.MinMaxScaler.data_min_
+
+        X_std = (vector - minVector) / (maxVector - minVector)
+
+        maxNumber = float("inf")
+        for i in range(0, len(self.center)):
+            temp = np.linalg.norm(self.center[i] - X_std)
+            if temp <= maxNumber:
+                sample.class_label = i
+                maxNumber = temp
+        self.sampleList.append(sample)
+        return sample.class_label
 
     # TODOz
     def load(self, file_path):
