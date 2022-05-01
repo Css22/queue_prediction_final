@@ -1,3 +1,5 @@
+import pickle
+
 from sklearn.cluster import KMeans
 import matplotlib.pyplot as plt
 import random
@@ -5,11 +7,15 @@ import random
 import numpy as np
 from sklearn.preprocessing import StandardScaler, MinMaxScaler, RobustScaler
 
+from sample.sample import Sample
+
 
 class Labeler:
     def __init__(self, k, center=np.array([])):
         self.center = center
         self.k = k
+        self.sampleList = list()
+        self.MinMaxScaler = MinMaxScaler()
 
     # TODO
 
@@ -19,7 +25,9 @@ class Labeler:
             :param sample_list: Sample数组
             :return: 打好标签的Sample数组
             """
+
         random.shuffle(sample_list)
+
         processing_list = list()
         # 读取sample的各个特征,并将这些特征放入processingList中处理
         for sample in sample_list:
@@ -30,9 +38,13 @@ class Labeler:
             array.append(sample.system_load)
             processing_list.append(array)
 
-        preprocess = MinMaxScaler(feature_range=(0, 1))
-        preprocess.fit(processing_list)
-        processing_list = preprocess.transform(processing_list)
+        # preprocess = MinMaxScaler(feature_range=(0,1))
+        # processing_list = preprocess.fit_transform(processing_list)
+        # processingNp = np.array(processing_list)
+
+        self.MinMaxScaler = MinMaxScaler(feature_range=(0, 1))
+        self.MinMaxScaler.fit(processing_list)
+        processing_list = self.MinMaxScaler.transform(processing_list)
         processing_np = np.array(processing_list)
 
         # preprocess = RobustScaler(quantile_range=(25.0,75.0))
@@ -58,7 +70,8 @@ class Labeler:
 
         for i in range(0, len(sample_list)):
             sample_list[i].class_label = y_kmeans[i]
-            # print(sample_list[i].class_label)
+
+        self.sampleList = (sample_list)
         distortions = []
         for i in range(1, self.k + 1):
             km = KMeans(
@@ -79,38 +92,7 @@ class Labeler:
         plt.show()
         return sample_list
 
-        # TODO
-
-    def label(self, sample):
-        """
-        给Sample.class_label打标签
-        :param sample: Sample
-        :return: int, 标签
-        """
-
-        array = list()
-        array.append(sample.cpu_hours)
-        array.append(sample.cpus)
-        array.append(sample.queue_load)
-        array.append(sample.system_load)
-        vector = np.array(array)
-
-        maxVector = self.MinMaxScaler.data_max_
-        minVector = self.MinMaxScaler.data_min_
-        print(vector)
-        X_std = (vector - minVector) / (maxVector - minVector)
-        print(X_std)
-
-        maxNumber = float("inf")
-        for i in range(0, len(self.center)):
-            temp = np.linalg.norm(self.center[i] - X_std)
-            if temp <= maxNumber:
-                sample.class_label = i
-                maxNumber = temp
-        self.sampleList.append(sample)
-        return sample.class_label
-        # TODO
-
+    # TODO
     def label(self, sample):
         """
         给Sample.class_label打标签
@@ -130,6 +112,7 @@ class Labeler:
 
         X_std = (vector - minVector) / (maxVector - minVector)
 
+
         maxNumber = float("inf")
         for i in range(0, len(self.center)):
             temp = np.linalg.norm(self.center[i] - X_std)
@@ -139,13 +122,26 @@ class Labeler:
         self.sampleList.append(sample)
         return sample.class_label
 
-    # TODOz
+    # TODO
     def load(self, file_path):
         """
         导入labeler
         :param file_path:
         """
-        pass
+        with open(file_path, 'rb') as text:
+            tmp_list = pickle.load(text)
+            self.center = pickle.load(text)
+
+        for i in tmp_list:
+            tmp_sample = Sample()
+            tmp_sample.cpu_hours = i[0]
+            tmp_sample.cpus = i[1]
+            tmp_sample.queue_load = i[2]
+            tmp_sample.system_load = i[3]
+            tmp_sample.actual_hour = i[4]
+            tmp_sample.class_label = i[5]
+            self.sampleList.append(tmp_sample)
+        return self.sampleList
 
     # TODO
     def save(self, file_path):
@@ -153,4 +149,16 @@ class Labeler:
         导出labeler
         :param file_path:
         """
-        pass
+        save_list = []
+        for i in self.sampleList:
+            tmp_list = []
+            tmp_list.append(i.cpu_hours)
+            tmp_list.append(i.cpus)
+            tmp_list.append(i.queue_load)
+            tmp_list.append(i.system_load)
+            tmp_list.append(i.actual_hour)
+            tmp_list.append(i.class_label)
+            save_list.append(tmp_list)
+        with open(file_path, 'wb') as text:
+            pickle.dump(save_list, text)
+            pickle.dump(self.center, text)
