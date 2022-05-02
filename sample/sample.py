@@ -48,6 +48,7 @@ def to_sample_list(preprocessed_list):
     :param preprocessed_list: RawSample数组
     :return: Sample数组
     """
+    preprocessed_list.sort(key=lambda x: x.request_ts)
     sample_list = []
     request_ts_list = []
 

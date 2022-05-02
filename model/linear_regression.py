@@ -62,15 +62,12 @@ class RegressionModel(Model):
                 tem_train_list.append(j.system_load)
 
                 train_list[j.class_label].append(tem_train_list)
-                label_list[j.class_label].append(math.log2(j.actual_sec + 1))
+                label_list[j.class_label].append(j.actual_sec)
 
-
-        # for i in range(0, len(train_list)):
-        #     print(len(train_list[i]))
 
         for i in range(0, self.labeler.k):
 
-            n_epoch = 20
+            n_epoch = 15
             batch_size = 32
 
             features = torch.from_numpy(np.array(train_list[i]))
@@ -102,8 +99,8 @@ class RegressionModel(Model):
                     optimizer.zero_grad()  # 梯度清零，等价于net.zero_grad()
                     loss.backward()
                     optimizer.step()
-                # print('epoch %d, loss: %f' % (epoch, loss.item()), end=' ------')
-                # print()
+                print('epoch %d, loss: %f' % (epoch, loss.item()), end=' ------')
+                print()
             net = net.to(device='cpu')
             self.model_list.append(net)
             print()
@@ -114,7 +111,7 @@ class RegressionModel(Model):
             pred = self.model_list[sample.class_label](
                 torch.tensor(torch.Tensor([math.log2(sample.cpu_hours + 1), sample.cpus, sample.queue_load, sample.system_load]),dtype=float))
             value = pred.tolist()[0]
-            return (2 ** value) - 1
+            return value
 
     # TODO
     def save(self, file_path):
@@ -154,8 +151,6 @@ class RegressionModel(Model):
             for j in range(0,len(self.test_dataset[i])):
                 test.append(self.test_dataset[i][j])
         rate = 0
-        print(len(test))
-        print(len(self.model_list))
         for i in test:
             predict_time = self.predict(i)
             actual_time = i.actual_sec
