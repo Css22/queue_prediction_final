@@ -12,13 +12,14 @@ from model.model import Model
 
 
 class SklearnRegressionModel(Model):
-    def __init__(self, sample_list, labeler, n_feature, n_output):
+    def __init__(self, sample_list, labeler, n_feature, n_output, raw_list):
         super().__init__(sample_list, labeler)
         self.n_feature = n_feature
         self.n_output = n_output
         self.model_list = []
         self.train_dataset = []
         self.test_dataset = []
+        self.raw_list = raw_list
 
         for i in range(0, self.labeler.k):
             train = list()
@@ -45,12 +46,17 @@ class SklearnRegressionModel(Model):
             for j in self.train_dataset[i]:
                 tem_train_list = list()
                 tem_train_list.append(math.log2(j.cpu_hours + 1))
-                tem_train_list.append(j.cpus)
-                tem_train_list.append(j.queue_load)
-                tem_train_list.append(j.system_load)
+                tem_train_list.append(math.log2(j.cpus + 1))
+                tem_train_list.append(math.log2(j.queue_load + 1))
+                tem_train_list.append(math.log2(j.system_load + 1))
+                # tem_train_list.append(j.cpu_hours )
+                # tem_train_list.append(j.cpus)
+                # tem_train_list.append(j.queue_load)
+                # tem_train_list.append(j.system_load)
 
                 train_list[j.class_label].append(tem_train_list)
                 label_list[j.class_label].append(math.log2(j.actual_sec + 1))
+                # label_list[j.class_label].append(j.actual_sec )
 
         # for i in range(0, len(train_list)):
         #     print(len(train_list[i]))
@@ -72,15 +78,20 @@ class SklearnRegressionModel(Model):
         return_list = list()
         tmp_list = list()
         tmp_list.append(math.log2(sample.cpu_hours + 1))
-        tmp_list.append(sample.cpus)
-        tmp_list.append(sample.queue_load)
-        tmp_list.append(sample.system_load)
+        # tmp_list.append(sample.cpu_hours )
+        # tmp_list.append(sample.cpus)
+        # tmp_list.append(sample.queue_load)
+        # tmp_list.append(sample.system_load)
+
+        tmp_list.append(math.log2(sample.cpus + 1))
+        tmp_list.append(math.log2(sample.queue_load + 1))
+        tmp_list.append(math.log2(sample.system_load + 1))
         tmp_np = np.array(tmp_list)
         return_list.append(tmp_np)
         return_list = np.array(return_list)
         selected_model = self.model_list[sample.class_label]
         result = selected_model.predict(return_list)
-        return result
+        return result[0]
 
     # TODO
     def save(self, file_path):
@@ -115,6 +126,7 @@ class SklearnRegressionModel(Model):
         sums = [0 for _ in range(6)]
         nums = [0 for _ in range(6)]
 
+
         for i in range(0, len(self.test_dataset)):
             for j in range(0, len(self.test_dataset[i])):
                 test.append(self.test_dataset[i][j])
@@ -122,15 +134,17 @@ class SklearnRegressionModel(Model):
 
         for i in test:
 
-            predict_time = self.predict(i)
+            predict_time = max(0, self.predict(i))
             predict_time = 2 ** predict_time - 1
             actual_time = i.actual_sec
-
-            print(str(actual_time)+" "+str(predict_time))
-            rate = abs(predict_time - actual_time) / (actual_time + 0.1) + rate
+            # print(str(predict_time),str(actual_time))
+            execution_time = self.raw_list[i.id].end_ts - self.raw_list[i.id].start_ts
+            # print(abs(predict_time - actual_time) / (actual_time + execution_time))
+            rate = abs(predict_time - actual_time) / (actual_time + execution_time) + rate
             if actual_time <= 3600:  # 0-1
                 sums[0] += abs(predict_time - actual_time)
                 nums[0] += 1
+
             elif actual_time <= 3600 * 3:  # 1-3
                 sums[1] += abs(predict_time - actual_time)
                 nums[1] += 1
@@ -147,8 +161,8 @@ class SklearnRegressionModel(Model):
                 sums[5] += abs(predict_time - actual_time)
                 nums[5] += 1
 
-        print(sums)
-        print(nums)
+        # print(sums)
+        # print(nums)
         avgs = [np.round(sums[i] / nums[i] / 3600, 2) for i in range(6)]
         print(avgs)
         AAE = np.round(sum(sums) / sum(nums) / 3600, 2)

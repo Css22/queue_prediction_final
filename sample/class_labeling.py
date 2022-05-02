@@ -75,7 +75,7 @@ class Labeler:
 
         self.sampleList = (sample_list)
 
-        print(self.center)
+        # print(self.center)
         color_list = ['r', 'k', 'y', 'g', 'c', 'b', 'm', 'teal', 'dodgerblue',
                       'indigo', 'deeppink', 'pink', 'peru', 'brown', 'lime', 'darkorange']
 
@@ -97,7 +97,7 @@ class Labeler:
         plt.scatter(self.center[:, 2], self.center[:, 3], marker='*', s=60)
         for i in range(self.k):
             plt.annotate('中心' + str(i + 1), (self.center[i, 0], self.center[i, 1]))
-        plt.show()
+        # plt.show()
 
 
         distortions = []
@@ -117,7 +117,7 @@ class Labeler:
         plt.plot(range(1, self.k + 1), distortions, marker='o')
         plt.xlabel('Number of clusters')
         plt.ylabel('Distortion')
-        plt.show()
+        # plt.show()
         return sample_list
 
     # TODO
