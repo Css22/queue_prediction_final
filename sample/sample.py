@@ -1,13 +1,17 @@
 import heapq
 import pickle
 class Sample:
-    def __init__(self, cpu_hours = -1, cpus=-1, queue_load= -1, system_load=-1, actual_sec=-1, class_label=-1):
+    def __init__(self, cpu_hours = -1, cpus=-1, queue_load= -1, system_load=-1, actual_sec=-1, class_label=-1, id=0):
+        self.id = id
         self.cpu_hours = cpu_hours
         self.cpus = cpus
         self.queue_load = queue_load
         self.system_load = system_load
         self.actual_sec = actual_sec
         self.class_label = class_label
+
+    def __str__(self):
+        return self.__dict__.__str__()
 
 
 # TODO
@@ -19,13 +23,7 @@ def sample_save(sample_list, file_path):
     """
     save_list = []
     for i in sample_list:
-        tmp_list = []
-        tmp_list.append(i.cpu_hours)
-        tmp_list.append(i.cpus)
-        tmp_list.append(i.queue_load)
-        tmp_list.append(i.system_load)
-        tmp_list.append(i.actual_sec)
-        tmp_list.append(i.class_label)
+        tmp_list = [i.cpu_hours, i.cpus, i.queue_load, i.system_load, i.actual_sec, i.class_label]
         save_list.append(tmp_list)
     with open(file_path, 'wb') as text:
         pickle.dump(save_list, text)
@@ -40,17 +38,7 @@ def sample_load(file_path):
     """
     with open(file_path, 'rb') as text:
         tmp_list = pickle.load(text)
-    sample_list = []
-    for i in tmp_list:
-        tmp_sample = Sample()
-        tmp_sample.cpu_hours = i[0]
-        tmp_sample.cpus = i[1]
-        tmp_sample.queue_load = i[2]
-        tmp_sample.system_load = i[3]
-        tmp_sample.actual_sec = i[4]
-        tmp_sample.class_label = i[5]
-        sample_list.append(tmp_sample)
-
+    sample_list = [Sample(x[0], x[1], x[2], x[3], x[4], x[5], index) for index, x in enumerate(tmp_list)]
     return sample_list
 
 # TODO
@@ -65,7 +53,7 @@ def to_sample_list(preprocessed_list):
 
     for i in preprocessed_list:
         if len(request_ts_list) == 0 :
-            tem = Sample(i.node_num * i.requested_sec, i.node_num, 0, 0, i.actual_sec)
+            tem = Sample(i.node_num * i.requested_sec, i.node_num, 0, 0, i.actual_sec, i.id)
             sample_list.append(tem)
         else:
             system_load = 0
@@ -83,7 +71,7 @@ def to_sample_list(preprocessed_list):
                         if job.start_ts >= i.request_ts:
                             queue_load = queue_load + 1
                     break
-            tem = Sample(i.node_num * i.requested_sec, i.node_num, queue_load, system_load, i.actual_sec)
+            tem = Sample(i.node_num * i.requested_sec, i.node_num, queue_load, system_load, i.actual_sec, i.id)
             sample_list.append(tem)
         heapq.heappush(request_ts_list,i)
     return sample_list

@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import random
 
 import numpy as np
+from numpy import  *
 from sklearn.preprocessing import StandardScaler, MinMaxScaler, RobustScaler
 
 from sample.sample import Sample
@@ -15,7 +16,8 @@ class Labeler:
         self.center = center
         self.k = k
         self.sampleList = list()
-        self.MinMaxScaler = MinMaxScaler()
+        self.scaler = None
+        self.clusters=None
 
     # TODO
 
@@ -42,9 +44,9 @@ class Labeler:
         # processing_list = preprocess.fit_transform(processing_list)
         # processingNp = np.array(processing_list)
 
-        self.MinMaxScaler = MinMaxScaler(feature_range=(0, 1))
-        self.MinMaxScaler.fit(processing_list)
-        processing_list = self.MinMaxScaler.transform(processing_list)
+        self.scaler = MinMaxScaler(feature_range=(0, 1))
+        self.scaler.fit(processing_list)
+        processing_list = self.scaler.transform(processing_list)
         processing_np = np.array(processing_list)
 
         # preprocess = RobustScaler(quantile_range=(25.0,75.0))
@@ -54,7 +56,7 @@ class Labeler:
 
         kmeans = KMeans(n_clusters=self.k)
         kmeans.fit(processing_np)
-        self.center = kmeans.cluster_centers_;
+        self.center = kmeans.cluster_centers_
         y_kmeans = kmeans.predict(processing_np)
 
         num_list = []
@@ -72,6 +74,32 @@ class Labeler:
             sample_list[i].class_label = y_kmeans[i]
 
         self.sampleList = (sample_list)
+
+        print(self.center)
+        color_list = ['r', 'k', 'y', 'g', 'c', 'b', 'm', 'teal', 'dodgerblue',
+                      'indigo', 'deeppink', 'pink', 'peru', 'brown', 'lime', 'darkorange']
+
+        self.cluster = [[] for _ in range(self.k)]
+        for sample in sample_list:
+                array = list()
+                array.append(sample.cpu_hours)
+                array.append(sample.cpus)
+                array.append(sample.queue_load)
+                array.append(sample.system_load)
+                self.cluster[sample.class_label].append(array)
+
+        for i in range(0,len(self.cluster)):
+            self.cluster[i]=np.array(self.cluster[i])
+            plt.scatter(self.cluster[i][:, 2], self.cluster[i][:, 3], cmap=plt.cm.Paired,color=color_list[i])
+
+
+        # 画聚类中心
+        plt.scatter(self.center[:, 2], self.center[:, 3], marker='*', s=60)
+        for i in range(self.k):
+            plt.annotate('中心' + str(i + 1), (self.center[i, 0], self.center[i, 1]))
+        plt.show()
+
+
         distortions = []
         for i in range(1, self.k + 1):
             km = KMeans(
@@ -107,8 +135,8 @@ class Labeler:
         array.append(sample.system_load)
         vector = np.array(array)
 
-        maxVector = self.MinMaxScaler.data_max_
-        minVector = self.MinMaxScaler.data_min_
+        maxVector = self.scaler.data_max_
+        minVector = self.scaler.data_min_
 
         X_std = (vector - minVector) / (maxVector - minVector)
 
@@ -132,8 +160,9 @@ class Labeler:
             tmp_list = pickle.load(text)
             self.center = pickle.load(text)
 
-        for i in tmp_list:
+        for index, i in enumerate(tmp_list):
             tmp_sample = Sample()
+            tmp_sample.id = index
             tmp_sample.cpu_hours = i[0]
             tmp_sample.cpus = i[1]
             tmp_sample.queue_load = i[2]
@@ -162,3 +191,10 @@ class Labeler:
         with open(file_path, 'wb') as text:
             pickle.dump(save_list, text)
             pickle.dump(self.center, text)
+
+
+
+
+
+
+

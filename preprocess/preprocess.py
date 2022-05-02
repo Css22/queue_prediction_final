@@ -2,7 +2,7 @@ import pickle
 
 
 class RawSample:
-    def __init__(self, request_ts=-1, start_ts=-1, end_ts=-1, node_num=-1, requested_sec=-1, queue_name=None):
+    def __init__(self, request_ts=-1, start_ts=-1, end_ts=-1, node_num=-1, requested_sec=-1, queue_name=None, id=0):
         self.request_ts = request_ts
         self.start_ts = start_ts
         self.end_ts = end_ts
@@ -10,6 +10,7 @@ class RawSample:
         self.requested_sec = requested_sec
         self.queue_name = queue_name
         self.actual_sec = self.start_ts - self.request_ts
+        self.id = id
 
     def __lt__(self, other):
         if self.end_ts < other.end_ts:
@@ -44,7 +45,7 @@ class Preprocessor:
         with open(file_path, 'rb') as text:
             tmp_list = pickle.load(text)
         raw_list = []
-        for i in tmp_list:
+        for index, i in enumerate(tmp_list):
             tmp_rawsample = RawSample()
             tmp_rawsample.request_ts = i[0]
             tmp_rawsample.start_ts = i[1]
@@ -53,6 +54,7 @@ class Preprocessor:
             tmp_rawsample.requested_sec = i[4]
             tmp_rawsample.queue_name = i[5]
             tmp_rawsample.actual_sec = i[6]
+            tmp_rawsample.id = index
             raw_list.append(tmp_rawsample)
 
         return raw_list

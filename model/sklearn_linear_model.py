@@ -4,26 +4,14 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.utils.data as data
+from sklearn.linear_model import LinearRegression
+from sklearn.model_selection import train_test_split
 from torch.nn import init
 
 from model.model import Model
 
 
-class LinearNet(nn.Module):
-    def __init__(self, n_feature, n_output):
-        super(LinearNet, self).__init__()
-        self.linear1 = nn.Linear(n_feature, 5)
-        self.linear2 = nn.Linear(5, 10)
-        self.output = nn.Linear(10, n_output)
-
-    def forward(self, x):
-        y = F.relu(self.linear1(x))
-        y = F.relu(self.linear2(y))
-        y = self.output(y)
-        return y
-
-
-class RegressionModel(Model):
+class SklearnRegressionModel(Model):
     def __init__(self, sample_list, labeler, n_feature, n_output):
         super().__init__(sample_list, labeler)
         self.n_feature = n_feature
@@ -47,7 +35,7 @@ class RegressionModel(Model):
     def train(self):
         train_list = []
         label_list = []
-        for i in range(0,self.labeler.k):
+        for i in range(0, self.labeler.k):
             train = list()
             label = list()
             train_list.append(train)
@@ -64,57 +52,35 @@ class RegressionModel(Model):
                 train_list[j.class_label].append(tem_train_list)
                 label_list[j.class_label].append(math.log2(j.actual_sec + 1))
 
-
         # for i in range(0, len(train_list)):
         #     print(len(train_list[i]))
 
         for i in range(0, self.labeler.k):
+            X_train, X_test, y_train, y_test = train_test_split(
+                train_list[i], label_list[i],
+                train_size=0.8, test_size=0.2, random_state=188
+            )
+            clf = LinearRegression(
+            )
 
-            n_epoch = 20
-            batch_size = 32
-
-            features = torch.from_numpy(np.array(train_list[i]))
-            labels = torch.from_numpy(np.array(label_list[i]))
-            labels = torch.tensor(labels, dtype=torch.double)
-
-            dataset = data.TensorDataset(features, labels)
-            data_iter = data.DataLoader(dataset, batch_size, shuffle=True)
-
-            net = LinearNet(self.n_feature, self.n_output).to(device='cuda')
-            net = net.double()
-
-            init.normal_(net.linear1.weight, mean=0, std=0.01)
-            init.constant_(net.linear1.bias, val=0)
-            init.normal_(net.linear2.weight, mean=0, std=0.01)
-            init.constant_(net.linear2.bias, val=0)
-            init.normal_(net.output.weight, mean=0, std=0.01)
-            init.constant_(net.output.bias, val=0)
-
-            loss_fn = nn.MSELoss()
-            optimizer = torch.optim.Adam(net.parameters(), lr=1e-5)
-            loss_fn = loss_fn.cuda()
-
-            for epoch in range(1, n_epoch + 1):
-                for x, y in data_iter:
-                    x, y = x.cuda(), y.cuda()
-                    output = net(x)
-                    loss = loss_fn(output, y)
-                    optimizer.zero_grad()  # 梯度清零，等价于net.zero_grad()
-                    loss.backward()
-                    optimizer.step()
-                # print('epoch %d, loss: %f' % (epoch, loss.item()), end=' ------')
-                # print()
-            net = net.to(device='cpu')
-            self.model_list.append(net)
-            print()
+            # 使用训练数据来学习（拟合），不需要返回值，训练的结果都在对象内部变量中
+            clf.fit(X_train, y_train)
+            self.model_list.append(clf)
 
     # TODO
     def predict(self, sample):
-        with torch.no_grad():
-            pred = self.model_list[sample.class_label](
-                torch.tensor(torch.Tensor([math.log2(sample.cpu_hours + 1), sample.cpus, sample.queue_load, sample.system_load]),dtype=float))
-            value = pred.tolist()[0]
-            return (2 ** value) - 1
+        return_list = list()
+        tmp_list = list()
+        tmp_list.append(math.log2(sample.cpu_hours + 1))
+        tmp_list.append(sample.cpus)
+        tmp_list.append(sample.queue_load)
+        tmp_list.append(sample.system_load)
+        tmp_np = np.array(tmp_list)
+        return_list.append(tmp_np)
+        return_list = np.array(return_list)
+        selected_model = self.model_list[sample.class_label]
+        result = selected_model.predict(return_list)
+        return result
 
     # TODO
     def save(self, file_path):
@@ -144,22 +110,24 @@ class RegressionModel(Model):
             else:
                 self.test_dataset[self.sample_list[i].class_label].append(self.sample_list[i])
 
-
     def test(self):
         test = []
         sums = [0 for _ in range(6)]
         nums = [0 for _ in range(6)]
 
-        for i in range(0,len(self.test_dataset)):
-            for j in range(0,len(self.test_dataset[i])):
+        for i in range(0, len(self.test_dataset)):
+            for j in range(0, len(self.test_dataset[i])):
                 test.append(self.test_dataset[i][j])
         rate = 0
-        print(len(test))
-        print(len(self.model_list))
+
         for i in test:
+
             predict_time = self.predict(i)
+            predict_time = 2 ** predict_time - 1
             actual_time = i.actual_sec
-            rate = abs(predict_time - actual_time)/(actual_time + 0.1) + rate
+
+            print(str(actual_time)+" "+str(predict_time))
+            rate = abs(predict_time - actual_time) / (actual_time + 0.1) + rate
             if actual_time <= 3600:  # 0-1
                 sums[0] += abs(predict_time - actual_time)
                 nums[0] += 1
@@ -179,10 +147,12 @@ class RegressionModel(Model):
                 sums[5] += abs(predict_time - actual_time)
                 nums[5] += 1
 
-        avgs = [round(sums[i] / nums[i]/3600, 2) for i in range(6)]
+        print(sums)
+        print(nums)
+        avgs = [np.round(sums[i] / nums[i] / 3600, 2) for i in range(6)]
         print(avgs)
-        AAE = round(sum(sums) / sum(nums)/3600, 2)
-        print('AAE :',end=' ')
+        AAE = np.round(sum(sums) / sum(nums) / 3600, 2)
+        print('AAE :', end=' ')
         print(AAE)
         PPE = rate / sum(nums)
         print('PPE :', end=' ')
