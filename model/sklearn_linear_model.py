@@ -137,7 +137,7 @@ class SklearnRegressionModel(Model):
             predict_time = max(0, self.predict(i))
             predict_time = 2 ** predict_time - 1
             actual_time = i.actual_sec
-            # print(str(predict_time),str(actual_time))
+            print(str(predict_time),str(actual_time))
             execution_time = self.raw_list[i.id].end_ts - self.raw_list[i.id].start_ts
             # print(abs(predict_time - actual_time) / (actual_time + execution_time))
             rate = abs(predict_time - actual_time) / (actual_time + execution_time) + rate
@@ -171,3 +171,4 @@ class SklearnRegressionModel(Model):
         PPE = rate / sum(nums)
         print('PPE :', end=' ')
         print(PPE)
+        return AAE,PPE

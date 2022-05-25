@@ -94,10 +94,10 @@ class Labeler:
 
 
         # 画聚类中心
-        plt.scatter(self.center[:, 2], self.center[:, 3], marker='*', s=60)
-        for i in range(self.k):
-            plt.annotate('中心' + str(i + 1), (self.center[i, 0], self.center[i, 1]))
-        # plt.show()
+        # plt.scatter(self.center[:, 2], self.center[:, 3], marker='*', s=60)
+        # for i in range(self.k):
+        #     plt.annotate('中心' + str(i + 1), (self.center[i, 0], self.center[i, 1]))
+        plt.show()
 
 
         distortions = []
