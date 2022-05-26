@@ -1,11 +1,12 @@
 import numpy as np
 import math
-from sklearn.linear_model import LinearRegression
+from sklearn.linear_model import LinearRegression, LogisticRegression
+from sklearn.metrics import accuracy_score, recall_score
 from sklearn.model_selection import train_test_split
 from model.model import Model
 
 
-class SklearnRegressionModel(Model):
+class SklearnLogisticRegressionModel(Model):
     def __init__(self, sample_list, labeler, n_feature, n_output, raw_list):
         super().__init__(sample_list, labeler)
         self.n_feature = n_feature
@@ -38,11 +39,11 @@ class SklearnRegressionModel(Model):
                 tem_train_list.append(math.log2(j.system_load + 1))
 
                 tem_train_list.append(j.future_load)
-                # tem_train_list.append(j.future_node_load)
-                # tem_train_list.append(j.future_requested_sec_load)
+                tem_train_list.append(j.future_node_load)
+                tem_train_list.append(j.future_requested_sec_load)
 
                 train_list[j.class_label].append(tem_train_list)
-                label_list[j.class_label].append(math.log2(j.actual_sec + 1))
+                label_list[j.class_label].append(self.classification(j.actual_sec))
 
         for i in range(0, self.labeler.k):
             if len(train_list[i]) <= 10:
@@ -50,14 +51,19 @@ class SklearnRegressionModel(Model):
                 continue
             X_train, X_test, y_train, y_test = train_test_split(
                 train_list[i], label_list[i],
-                train_size=0.8, test_size=0.2, random_state=188
-            )
-            clf = LinearRegression(
+                train_size=0.99, test_size=0.01, random_state=188
             )
 
+            log_model = LogisticRegression(multi_class="ovr", solver="lbfgs", max_iter=1000)
+
             # 使用训练数据来学习（拟合），不需要返回值，训练的结果都在对象内部变量中
-            clf.fit(X_train, y_train)
-            self.model_list.append(clf)
+            log_model.fit(X_train, y_train)
+            self.model_list.append(log_model)
+            pred_test = log_model.predict(X_test)
+            acu = accuracy_score(y_test, pred_test)  # 准确率
+            # print('准确率', end=': ')
+            # print(acu*100,end='%')
+            # print()
 
     # TODO
     def predict(self, sample):
@@ -70,8 +76,8 @@ class SklearnRegressionModel(Model):
         tmp_list.append(math.log2(sample.system_load + 1))
 
         tmp_list.append(sample.future_load)
-        # tmp_list.append(sample.future_node_load)
-        # tmp_list.append(sample.future_requested_sec_load)
+        tmp_list.append(sample.future_node_load)
+        tmp_list.append(sample.future_requested_sec_load)
 
         tmp_np = np.array(tmp_list)
         return_list.append(tmp_np)
@@ -115,58 +121,37 @@ class SklearnRegressionModel(Model):
 
     def test(self):
         test = []
-        sums = [0 for _ in range(6)]
-        nums = [0 for _ in range(6)]
 
         for i in range(0, len(self.test_dataset)):
             for j in range(0, len(self.test_dataset[i])):
                 test.append(self.test_dataset[i][j])
-        rate = 0
-
+        all_num = 0
+        all_true = 0
+        num = [0] * 11
+        true = [0] * 11
         for i in test:
             if len(self.train_dataset[i.class_label]) <= 10:
                 continue
-            predict_time = max(0, self.predict(i))
-            predict_time = 2 ** predict_time - 1
-            actual_time = i.actual_sec
-            # print(str(predict_time),str(actual_time))
-            execution_time = self.raw_list[i.id].end_ts - self.raw_list[i.id].start_ts
-            rate = abs(predict_time - actual_time) / (actual_time + execution_time) + rate
-            if actual_time <= 3600:  # 0-1
-                sums[0] += abs(predict_time - actual_time)
-                nums[0] += 1
+            predict_class = self.predict(i)
 
-            elif actual_time <= 3600 * 3:  # 1-3
-                sums[1] += abs(predict_time - actual_time)
-                nums[1] += 1
-            elif actual_time <= 3600 * 6:  # 3-6
-                sums[2] += abs(predict_time - actual_time)
-                nums[2] += 1
-            elif actual_time <= 3600 * 12:  # 6-12
-                sums[3] += abs(predict_time - actual_time)
-                nums[3] += 1
-            elif actual_time <= 3600 * 24:  # 12-24
-                sums[4] += abs(predict_time - actual_time)
-                nums[4] += 1
-            else:
-                sums[5] += abs(predict_time - actual_time)
-                nums[5] += 1
+            actual_class = self.classification(i.actual_sec)
+            all_num = all_num + 1
+            num[actual_class] = num[actual_class] + 1
+            if predict_class == actual_class:
+                all_true = all_true + 1
+                true[actual_class] = true[actual_class] + 1
+        print('准确率', end=': ')
+        print((all_true / all_num) * 100, end='%')
+        print()
 
-        avgs = [np.round(sums[i] / nums[i] / 3600, 2) for i in range(6)]
-        print(avgs)
-        AAE = np.round(sum(sums) / sum(nums) / 3600, 2)
-        print('AAE :', end=' ')
-        print(AAE)
-        PPE = rate / sum(nums)
-        print('PPE :', end=' ')
-        print(PPE)
-        return AAE, PPE
+        for i in range(0, len(num)):
+            print(i, true[i] / num[i])
 
     def label_queue_name(self):
         queue_name_list = []
 
         for i in self.sample_list:
-            if i.queue_name  not in queue_name_list:
+            if i.queue_name not in queue_name_list:
                 queue_name_list.append(i.queue_name)
 
         for i in self.sample_list:
@@ -178,3 +163,27 @@ class SklearnRegressionModel(Model):
         self.labeler.k = 1
         for i in self.sample_list:
             i.class_label = 1
+
+    def classification(self, sec):
+        if sec <= 300:
+            return 0
+        if sec <= 600:
+            return 1
+        if sec <= 900:
+            return 2
+        if sec <= 1200:
+            return 3
+        if sec <= 2400:
+            return 4
+        if sec <= 3600:  # 0-1
+            return 5
+        elif sec <= 3600 * 3:  # 1-3
+            return 6
+        elif sec <= 3600 * 6:  # 3-6
+            return 7
+        elif sec <= 3600 * 12:  # 6-12
+            return 8
+        elif sec <= 3600 * 24:  # 12-24
+            return 9
+        else:
+            return 10

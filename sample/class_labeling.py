@@ -27,7 +27,7 @@ class Labeler:
             :param sample_list: Sample数组
             :return: 打好标签的Sample数组
             """
-
+        print('start label')
         random.shuffle(sample_list)
 
         processing_list = list()
@@ -118,6 +118,7 @@ class Labeler:
         plt.xlabel('Number of clusters')
         plt.ylabel('Distortion')
         # plt.show()
+        print('end label')
         return sample_list
 
     # TODO

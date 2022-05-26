@@ -12,8 +12,8 @@ from model.model import Model
 class LinearNet(nn.Module):
     def __init__(self, n_feature, n_output):
         super(LinearNet, self).__init__()
-        self.linear1 = nn.Linear(n_feature, 5)
-        self.linear2 = nn.Linear(5, 10)
+        self.linear1 = nn.Linear(n_feature, 15)
+        self.linear2 = nn.Linear(15, 10)
         self.output = nn.Linear(10, n_output)
 
     def forward(self, x):
@@ -24,20 +24,15 @@ class LinearNet(nn.Module):
 
 
 class RegressionModel(Model):
-    def __init__(self, sample_list, labeler, n_feature, n_output):
+    def __init__(self, sample_list, labeler, n_feature, n_output, raw_list):
         super().__init__(sample_list, labeler)
         self.n_feature = n_feature
         self.n_output = n_output
         self.model_list = []
         self.train_dataset = []
         self.test_dataset = []
+        self.raw_list = raw_list
 
-        for i in range(0, self.labeler.k):
-            train = list()
-            test = list()
-            self.train_dataset.append(train)
-            self.test_dataset.append(test)
-        self.create_dataset()
 
     """
        我们以数据集 训练，测试比例 8:2的比例进行来来行训练与测试，
@@ -47,7 +42,7 @@ class RegressionModel(Model):
     def train(self):
         train_list = []
         label_list = []
-        for i in range(0,self.labeler.k):
+        for i in range(0, self.labeler.k):
             train = list()
             label = list()
             train_list.append(train)
@@ -59,11 +54,14 @@ class RegressionModel(Model):
                 tem_train_list.append(math.log2(j.cpu_hours + 1))
                 tem_train_list.append(j.cpus)
                 tem_train_list.append(j.queue_load)
-                tem_train_list.append(j.system_load)
+                tem_train_list.append(math.log2(j.system_load + 1))
+
+                # tem_train_list.append(j.future_load)
+                # tem_train_list.append(j.future_node_load)
+                # tem_train_list.append(j.future_requested_sec_load)
 
                 train_list[j.class_label].append(tem_train_list)
-                label_list[j.class_label].append(j.actual_sec)
-
+                label_list[j.class_label].append(math.log2(j.actual_sec + 1))
 
         for i in range(0, self.labeler.k):
 
@@ -109,7 +107,8 @@ class RegressionModel(Model):
     def predict(self, sample):
         with torch.no_grad():
             pred = self.model_list[sample.class_label](
-                torch.tensor(torch.Tensor([math.log2(sample.cpu_hours + 1), sample.cpus, sample.queue_load, sample.system_load]),dtype=float))
+                torch.tensor(torch.Tensor([math.log2(sample.cpu_hours + 1), sample.cpus, sample.queue_load,
+                                           math.log2(sample.system_load + 1)]), dtype=float))
             value = pred.tolist()[0]
             return value
 
@@ -127,6 +126,11 @@ class RegressionModel(Model):
         我们是采取训练训练集：测试集 = 8：2的比例进行划分。
         注意，这里进入的sample_list已经进行过打乱。
         """
+        for i in range(0, self.labeler.k):
+            train = list()
+            test = list()
+            self.train_dataset.append(train)
+            self.test_dataset.append(test)
         count = [0] * self.labeler.k
         for i in range(0, len(self.sample_list)):
             count[self.sample_list[i].class_label] = count[self.sample_list[i].class_label] + 1
@@ -141,23 +145,29 @@ class RegressionModel(Model):
             else:
                 self.test_dataset[self.sample_list[i].class_label].append(self.sample_list[i])
 
-
     def test(self):
         test = []
         sums = [0 for _ in range(6)]
         nums = [0 for _ in range(6)]
 
-        for i in range(0,len(self.test_dataset)):
-            for j in range(0,len(self.test_dataset[i])):
+        for i in range(0, len(self.test_dataset)):
+            for j in range(0, len(self.test_dataset[i])):
                 test.append(self.test_dataset[i][j])
         rate = 0
+
         for i in test:
-            predict_time = self.predict(i)
+            if len(self.train_dataset[i.class_label]) <= 10:
+                continue
+            predict_time = max(0, self.predict(i))
+            predict_time = 2 ** predict_time - 1
             actual_time = i.actual_sec
-            rate = abs(predict_time - actual_time)/(actual_time + 0.1) + rate
+            # print(str(predict_time),str(actual_time))
+            execution_time = self.raw_list[i.id].end_ts - self.raw_list[i.id].start_ts
+            rate = abs(predict_time - actual_time) / (actual_time + execution_time) + rate
             if actual_time <= 3600:  # 0-1
                 sums[0] += abs(predict_time - actual_time)
                 nums[0] += 1
+
             elif actual_time <= 3600 * 3:  # 1-3
                 sums[1] += abs(predict_time - actual_time)
                 nums[1] += 1
@@ -174,11 +184,24 @@ class RegressionModel(Model):
                 sums[5] += abs(predict_time - actual_time)
                 nums[5] += 1
 
-        avgs = [round(sums[i] / nums[i]/3600, 2) for i in range(6)]
+        avgs = [np.round(sums[i] / nums[i] / 3600, 2) for i in range(6)]
         print(avgs)
-        AAE = round(sum(sums) / sum(nums)/3600, 2)
-        print('AAE :',end=' ')
+        AAE = np.round(sum(sums) / sum(nums) / 3600, 2)
+        print('AAE :', end=' ')
         print(AAE)
         PPE = rate / sum(nums)
         print('PPE :', end=' ')
         print(PPE)
+        return AAE, PPE
+
+    def label_queue_name(self):
+        queue_name_list = []
+
+        for i in self.sample_list:
+            if i.queue_name not in queue_name_list:
+                queue_name_list.append(i.queue_name)
+
+        for i in self.sample_list:
+            i.class_label = queue_name_list.index(i.queue_name)
+
+        self.labeler.k = len(queue_name_list)
