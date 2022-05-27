@@ -5,10 +5,12 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.metrics import accuracy_score, recall_score
 from sklearn.model_selection import train_test_split
 from sklearn.tree import export_text
+from sklearn.ensemble import GradientBoostingClassifier
 from model.model import Model
 from sklearn import tree
 
-class DecisionTreeRegressor(Model):
+
+class GB_Classifier(Model):
     def __init__(self, sample_list, labeler, n_feature, n_output, raw_list):
         super().__init__(sample_list, labeler)
         self.n_feature = n_feature
@@ -45,7 +47,7 @@ class DecisionTreeRegressor(Model):
                 tem_train_list.append(j.future_requested_sec_load)
 
                 train_list[j.class_label].append(tem_train_list)
-                label_list[j.class_label].append(math.log2(j.actual_sec+1))
+                label_list[j.class_label].append(self.classification(j.actual_sec))
 
         for i in range(0, self.labeler.k):
             if len(train_list[i]) <= 10:
@@ -56,7 +58,7 @@ class DecisionTreeRegressor(Model):
                 train_size=0.99, test_size=0.01, random_state=188
             )
 
-            tree_model = tree.DecisionTreeRegressor()
+            tree_model = GradientBoostingClassifier()
             tree_model.fit(X_train, y_train)
             self.model_list.append(tree_model)
 
@@ -116,52 +118,40 @@ class DecisionTreeRegressor(Model):
 
     def test(self):
         test = []
-        sums = [0 for _ in range(6)]
-        nums = [0 for _ in range(6)]
 
         for i in range(0, len(self.test_dataset)):
             for j in range(0, len(self.test_dataset[i])):
                 test.append(self.test_dataset[i][j])
-        rate = 0
-
+        all_num = 0
+        all_true = 0
+        all_near = 0
+        num = [0] * 6
+        true = [0] * 6
+        near = [0] * 6
         for i in test:
             if len(self.train_dataset[i.class_label]) <= 10:
                 continue
-            predict_time = max(0, self.predict(i))
-            predict_time = 2 ** predict_time - 1
-            actual_time = i.actual_sec
-            # print(str(predict_time),str(actual_time))
-            execution_time = self.raw_list[i.id].end_ts - self.raw_list[i.id].start_ts
-            rate = abs(predict_time - actual_time) / (actual_time + execution_time) + rate
-            if actual_time <= 3600:  # 0-1
-                sums[0] += abs(predict_time - actual_time)
-                nums[0] += 1
+            predict_class = self.predict(i)
+            actual_class = self.classification(i.actual_sec)
+            if abs(predict_class - actual_class) <= 1:
+                near[actual_class] = near[actual_class] + 1
+                all_near = all_near + 1
+            all_num = all_num + 1
+            num[actual_class] = num[actual_class] + 1
+            if predict_class == actual_class:
+                all_true = all_true + 1
+                true[actual_class] = true[actual_class] + 1
+        print('准确率', end=': ')
+        print((all_true / all_num) * 100, end='%')
+        print()
 
-            elif actual_time <= 3600 * 3:  # 1-3
-                sums[1] += abs(predict_time - actual_time)
-                nums[1] += 1
-            elif actual_time <= 3600 * 6:  # 3-6
-                sums[2] += abs(predict_time - actual_time)
-                nums[2] += 1
-            elif actual_time <= 3600 * 12:  # 6-12
-                sums[3] += abs(predict_time - actual_time)
-                nums[3] += 1
-            elif actual_time <= 3600 * 24:  # 12-24
-                sums[4] += abs(predict_time - actual_time)
-                nums[4] += 1
-            else:
-                sums[5] += abs(predict_time - actual_time)
-                nums[5] += 1
-
-        avgs = [np.round(sums[i] / nums[i] / 3600, 2) for i in range(6)]
-        print(avgs)
-        AAE = np.round(sum(sums) / sum(nums) / 3600, 2)
-        print('AAE :', end=' ')
-        print(AAE)
-        PPE = rate / sum(nums)
-        print('PPE :', end=' ')
-        print(PPE)
-        return AAE, PPE
+        print('相邻', end=': ')
+        print((all_near / all_num) * 100, end='%')
+        print()
+        for i in range(0, len(num)):
+            print(i, true[i] / num[i], end=' ')
+            print('相邻', end=': ')
+            print(near[i] / num[i])
 
     def label_queue_name(self):
         queue_name_list = []
@@ -179,3 +169,17 @@ class DecisionTreeRegressor(Model):
         self.labeler.k = 1
         for i in self.sample_list:
             i.class_label = 1
+
+    def classification(self, sec):
+        if sec <= 3600:  # 0-1
+            return 0
+        elif sec <= 3600 * 3:  # 1-3
+            return 1
+        elif sec <= 3600 * 6:  # 3-6
+            return 2
+        elif sec <= 3600 * 12:  # 6-12
+            return 3
+        elif sec <= 3600 * 24:  # 12-24
+            return 4
+        else:
+            return 5
