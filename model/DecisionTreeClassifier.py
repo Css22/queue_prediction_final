@@ -1,12 +1,14 @@
 import numpy as np
 import math
-from sklearn.linear_model import LinearRegression, LogisticRegression
+import graphviz
+from sklearn.tree import DecisionTreeClassifier
 from sklearn.metrics import accuracy_score, recall_score
 from sklearn.model_selection import train_test_split
+from sklearn.tree import export_text
 from model.model import Model
+from sklearn import tree
 
-
-class SklearnLogisticRegressionModel(Model):
+class DecisionTreeClassifier(Model):
     def __init__(self, sample_list, labeler, n_feature, n_output, raw_list):
         super().__init__(sample_list, labeler)
         self.n_feature = n_feature
@@ -38,9 +40,9 @@ class SklearnLogisticRegressionModel(Model):
                 tem_train_list.append(j.queue_load)
                 tem_train_list.append(math.log2(j.system_load + 1))
 
-                tem_train_list.append(j.future_load)
-                tem_train_list.append(j.future_node_load)
-                tem_train_list.append(j.future_requested_sec_load)
+                # tem_train_list.append(j.future_load)
+                # tem_train_list.append(j.future_node_load)
+                # tem_train_list.append(j.future_requested_sec_load)
 
                 train_list[j.class_label].append(tem_train_list)
                 label_list[j.class_label].append(self.classification(j.actual_sec))
@@ -51,21 +53,13 @@ class SklearnLogisticRegressionModel(Model):
                 continue
             X_train, X_test, y_train, y_test = train_test_split(
                 train_list[i], label_list[i],
-                train_size=0.8, test_size=0.2, random_state=188
+                train_size=0.99, test_size=0.01, random_state=188
             )
 
-            log_model = LogisticRegression(multi_class="ovr", solver="lbfgs", max_iter=10000)
-
-            # 使用训练数据来学习（拟合），不需要返回值，训练的结果都在对象内部变量中
-            log_model.fit(X_train, y_train)
-            self.model_list.append(log_model)
-            pred_test = log_model.predict(X_test)
-            acu = accuracy_score(y_test, pred_test)  # 准确率
-            # print('准确率', end=': ')
-            # print(acu*100,end='%')
-            # print()
-
-    # TODO
+            tree_model = tree.DecisionTreeClassifier()
+            tree_model.fit(X_train, y_train)
+            self.model_list.append(tree_model)
+            # TODO
     def predict(self, sample):
         return_list = list()
         tmp_list = list()
@@ -75,9 +69,9 @@ class SklearnLogisticRegressionModel(Model):
         tmp_list.append(sample.queue_load)
         tmp_list.append(math.log2(sample.system_load + 1))
 
-        tmp_list.append(sample.future_load)
-        tmp_list.append(sample.future_node_load)
-        tmp_list.append(sample.future_requested_sec_load)
+        # tmp_list.append(sample.future_load)
+        # tmp_list.append(sample.future_node_load)
+        # tmp_list.append(sample.future_requested_sec_load)
 
         tmp_np = np.array(tmp_list)
         return_list.append(tmp_np)
@@ -111,7 +105,7 @@ class SklearnLogisticRegressionModel(Model):
 
         for i in range(0, len(self.sample_list)):
 
-            index = count[self.sample_list[i].class_label] / 10 * 10
+            index = count[self.sample_list[i].class_label] / 10 * 8
 
             if len(self.train_dataset[self.sample_list[i].class_label]) <= index:
                 self.train_dataset[self.sample_list[i].class_label].append(self.sample_list[i])
@@ -149,12 +143,12 @@ class SklearnLogisticRegressionModel(Model):
         print()
 
         print('相邻', end=': ')
-        print((all_near / all_num) * 100, end='%')
+        print((all_near/all_num) * 100, end='%')
         print()
         for i in range(0, len(num)):
             print(i, true[i] / num[i], end=' ')
             print('相邻', end=': ')
-            print(near[i] / num[i])
+            print(near[i]/num[i])
 
     def label_queue_name(self):
         queue_name_list = []

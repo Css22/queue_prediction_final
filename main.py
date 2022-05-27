@@ -1,6 +1,7 @@
-from model.MLP import RegressionModel
+
 from model.sklearn_linear_model import SklearnRegressionModel
 from model.sklearn_logistic_regression import SklearnLogisticRegressionModel
+from model.DecisionTreeClassifier import DecisionTreeClassifier
 from preprocess.preprocess_theta import PreprocessorTheta
 from preprocess.Preprocessor_mira import PreprocessorMira
 from preprocess.preprocess_taiyi import PreprocessorTaiyi
@@ -30,7 +31,7 @@ if __name__ == '__main__':
     # # run model
     # model = SklearnRegressionModel(sample_list, labeler, 7, 1, raw_list)
     # model = RegressionModel(sample_list, labeler, 4, 1, raw_list)
-    model = SklearnLogisticRegressionModel(sample_list, labeler, 7, 1, raw_list)
+    model = DecisionTreeClassifier(sample_list, labeler, 7, 1, raw_list)
     # 修改聚类，取消聚类，并以queue_name作为分类标准。
     # model.label_queue_name()
     model.create_dataset()
